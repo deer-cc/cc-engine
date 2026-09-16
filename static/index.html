@@ -1,0 +1,121 @@
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+
+app = FastAPI(title="客服引擎演示")
+
+@app.get("/", response_class=HTMLResponse)
+async def demo():
+    return """
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能客服演示</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+        .chat-container { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .messages { max-height: 400px; overflow-y: auto; margin-bottom: 16px; }
+        .message { margin-bottom: 12px; display: flex; }
+        .message.user { justify-content: flex-end; }
+        .message.assistant { justify-content: flex-start; }
+        .bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
+        .message.user .bubble { background: #667eea; color: white; border-bottom-right-radius: 4px; }
+        .message.assistant .bubble { background: #f0f0f0; color: #333; border-bottom-left-radius: 4px; }
+        .input-area { display: flex; gap: 8px; }
+        .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 24px; outline: none; font-size: 14px; }
+        .input-area input:focus { border-color: #667eea; }
+        .input-area button { padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 24px; cursor: pointer; font-size: 14px; }
+        .input-area button:hover { background: #5a6fd6; }
+        .input-area button:disabled { background: #ccc; cursor: not-allowed; }
+        .status { text-align: center; color: #999; font-size: 12px; margin-top: 12px; }
+        .quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        .quick-reply { padding: 6px 12px; background: #f0f0f0; border: none; border-radius: 16px; font-size: 12px; cursor: pointer; }
+        .quick-reply:hover { background: #e0e0e0; }
+        .meta { font-size: 11px; color: #999; margin-top: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🤖 智能客服演示</h1>
+        <p>AI 意图识别 + 多轮对话 + RAG 知识库融合</p>
+    </div>
+    <div class="chat-container">
+        <div class="quick-replies">
+            <button class="quick-reply" onclick="sendQuick('你好，在吗？')">打招呼</button>
+            <button class="quick-reply" onclick="sendQuick('什么时候发货？')">物流查询</button>
+            <button class="quick-reply" onclick="sendQuick('我想退货，怎么办？')">退换货</button>
+            <button class="quick-reply" onclick="sendQuick('这个多少钱？')">价格咨询</button>
+            <button class="quick-reply" onclick="sendQuick('有货吗？')">库存查询</button>
+            <button class="quick-reply" onclick="sendQuick('质量有问题')">投诉反馈</button>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="input-area">
+            <input type="text" id="input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')sendMessage()">
+            <button id="sendBtn" onclick="sendMessage()">发送</button>
+        </div>
+        <div class="status" id="status">已连接</div>
+    </div>
+</div>
+<script>
+let sessionId = 'demo_' + Date.now();
+let turnCount = 0;
+
+function addMessage(text, role, intent, confidence) {
+    const messages = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'message ' + role;
+    let meta = '';
+    if (intent) {
+        meta = `<div class="meta">意图: ${intent} | 置信度: ${(confidence*100).toFixed(0)}%</div>`;
+    }
+    div.innerHTML = `<div class="bubble">${text}${meta}</div>`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+async function sendMessage() {
+    const input = document.getElementById('input');
+    const btn = document.getElementById('sendBtn');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    btn.disabled = true;
+    addMessage(text, 'user');
+
+    try {
+        const resp = await fetch('/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: text, session_id: sessionId})
+        });
+        const data = await resp.json();
+        addMessage(data.reply, 'assistant', data.intent, data.confidence);
+        turnCount = data.turn_count;
+        document.getElementById('status').textContent = `第 ${data.turn_count} 轮对话`;
+    } catch(e) {
+        addMessage('网络错误，请重试', 'assistant');
+    }
+    btn.disabled = false;
+    input.focus();
+}
+
+function sendQuick(text) {
+    document.getElementById('input').value = text;
+    sendMessage();
+}
+
+// 欢迎消息
+addMessage('你好！我是智能客服助手，有什么可以帮您的？', 'assistant');
+</script>
+</body>
+</html>
+"""

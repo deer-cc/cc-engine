@@ -1,0 +1,11 @@
+# 客服引擎 v1.0 配置
+{
+  "llm_base_url": "http://127.0.0.1:15721",
+  "llm_api_key": "PROXY_MANAGED",
+  "llm_model": "claude-opus-4-8-20251101",
+  "max_turns": 10,
+  "history_window": 6,
+  "kb_top_k": 3,
+  "port": 8899,
+  "host": "127.0.0.1"
+}
