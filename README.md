@@ -55,7 +55,8 @@ User Message
 | Component | Approach | Rationale |
 |:----------|:---------|:----------|
 | **Intent Recognition** | LLM primary + Keyword fallback | Handles complex phrasings; keyword guarantees zero-cost fallback |
-| **RAG Retrieval** | Self-built inverted index + TF-IDF | No embedding model dependency; fast local search; good for FAQ-style knowledge |
+| **RAG Retrieval** | Self-built inverted index + TF-IDF + query rewrite | Handles colloquial phrasing via synonym expansion; no embedding model dependency |
+| **Confidence Calibration** | Three-tier thresholds (high≥0.85, medium≥0.60, low<0.60) + intent overrides | Complaints require higher confidence; greetings lower; auto-clarification on low confidence |
 | **Dialogue State** | Session-based with history window | Predictable memory usage; prevents context overflow |
 | **Reply Generation** | Intent-router + KB-context templates | Deterministic responses for common intents; graceful degradation |
 
@@ -77,8 +78,10 @@ cp .env.example .env
 pytest tests/ -v
 
 # 4. Start server
-python -m src.main
-# → http://localhost:8899
+#    Windows: 双击 start_demo.bat  (最省事)
+#    或手动:  python -m uvicorn src.main:app --host 127.0.0.1 --port 8899
+#    ⚠️ 不要用 `python -m src.main` (Windows/PowerShell 下 uvicorn 会静默崩溃)
+# → http://127.0.0.1:8899  (演示页) / /docs (API 文档)
 ```
 
 ---
@@ -179,13 +182,15 @@ pytest tests/ -v
 pytest tests/ --cov=src --cov-report=term-missing
 ```
 
-**Test Coverage**: 18/18 tests passing
+**Test Coverage**: 47/47 tests passing
 
 | Module | Tests | Coverage |
 |:-------|:-----:|:--------:|
 | `intent.py` | 5 | ✅ |
 | `dialog.py` | 6 | ✅ |
 | `rag.py` | 7 | ✅ |
+| `query_rewriter.py` | 13 | ✅ |
+| `confidence.py` | 16 | ✅ |
 
 ---
 

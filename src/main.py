@@ -185,6 +185,8 @@ async def get_intent(req: IntentRequest):
     """意图识别"""
     config = load_config()
     result = await classify_intent(req.message, config)
+    # LLM 路径可能不返回 labels 字段, 补默认值避免 500
+    result.setdefault("labels", {})
     return IntentResponse(**result)
 
 
