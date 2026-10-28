@@ -5,3 +5,13 @@ dist/
 venv/
 .env
 conversations/*.json
+
+# 运行产物: 请求日志
+request_logs/
+conversations/
+
+# 测试/运行缓存
+.pytest_cache/
+server_out.log
+server_err.log
+*.bak-*

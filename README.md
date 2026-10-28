@@ -4,6 +4,15 @@
 
 A production-ready customer service agent showcasing AI dialogue engineering capabilities: intent classification, multi-turn state management, retrieval-augmented generation, and full engineering standards (pytest + Docker + CI).
 
+**Quick facts**: 66/66 tests passing · Recall@3 80% (15-query labeled set) · MRR 0.689 · intent accuracy 100% · 7 API endpoints · ~1,100 LOC
+
+```bash
+pip install -r requirements.txt && pytest tests/ -q   # test
+python -m uvicorn src.main:app --port 8899            # run → http://127.0.0.1:8899
+```
+
+Docs: [DELIVERY.md](DELIVERY.md) · [DESIGN.md](DESIGN.md) · [RETRIEVAL_TUNING.md](RETRIEVAL_TUNING.md) (retrieval tuning log with real numbers)
+
 ---
 
 ## Architecture
@@ -70,9 +79,11 @@ git clone <your-repo>
 cd customer-service-engine
 pip install -r requirements.txt
 
-# 2. Configure (optional - defaults work without API key)
+# 2. Configure (optional)
 cp .env.example .env
-# Edit .env with your API credentials
+# 默认 config.json 指向 http://127.0.0.1:15721（本地 cc-connect 代理）；
+# 外部环境请改成你的 LLM 地址，如 https://api.deepseek.com/v1 + deepseek-chat（详见 DELIVERY.md 三种选项）
+# 不配 LLM 也能跑：意图走关键词兜底，只是回复质量下降
 
 # 3. Run tests
 pytest tests/ -v
@@ -160,9 +171,15 @@ customer-service-engine/
 ├── static/
 │   └── index.html         # Web demo UI
 ├── tests/
+│   ├── eval_set.json      # 15-query labeled retrieval eval set
 │   ├── test_intent.py
 │   ├── test_dialog.py
-│   └── test_rag.py
+│   ├── test_rag.py
+│   ├── test_confidence.py
+│   ├── test_query_rewriter.py
+│   ├── test_request_log.py
+│   └── test_config.py
+├── src/ragas_eval.py      # Recall@K / MRR evaluation
 ├── config.json            # Runtime configuration
 ├── .env.example           # Environment template
 ├── requirements.txt
@@ -182,15 +199,18 @@ pytest tests/ -v
 pytest tests/ --cov=src --cov-report=term-missing
 ```
 
-**Test Coverage**: 47/47 tests passing
+**Test Coverage**: 66/66 tests passing
 
-| Module | Tests | Coverage |
-|:-------|:-----:|:--------:|
-| `intent.py` | 5 | ✅ |
-| `dialog.py` | 6 | ✅ |
-| `rag.py` | 7 | ✅ |
-| `query_rewriter.py` | 13 | ✅ |
-| `confidence.py` | 16 | ✅ |
+| Module | Tests | Status |
+|:-------|:-----:|:------:|
+| `intent.py` | 6 | ✅ |
+| `dialog.py` | 7 | ✅ |
+| `rag.py` | 6 | ✅ |
+| `query_rewriter.py` | 14 | ✅ |
+| `confidence.py` | 19 | ✅ |
+| `request_log.py` | 11 | ✅ |
+| `config.json` validity | 3 | ✅ |
+| **Total** | **66** | **✅** |
 
 ---
 
@@ -245,11 +265,14 @@ The architecture supports easy extension:
 
 | Metric | Value |
 |:-------|:-----:|
-| Lines of Code | ~500 |
-| Test Coverage | 100% (18/18) |
-| Dependencies | 6 (lightweight) |
-| API Endpoints | 5 |
-| Knowledge Chunks | ~50 |
+| Lines of Code | ~1,100 |
+| Tests | 66/66 passing |
+| API Endpoints | 7 |
+| Knowledge Chunks | 28 |
+| Retrieval Recall@3 | 80.0% (15-query labeled set) |
+| Retrieval MRR | 0.689 |
+| Intent Accuracy | 100% |
+| Dependencies | 7 (lightweight) |
 | Build Time (Docker) | ~30s |
 
 ---

@@ -65,8 +65,14 @@ class RequestLog:
             "assistant_reply_len": self.assistant_reply_len,
         }
         with _lock:
-            with open(LOG_DIR / f"{day}.jsonl", "a", encoding="utf-8") as f:
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            try:
+                with open(LOG_DIR / f"{day}.jsonl", "a", encoding="utf-8") as f:
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            except OSError as e:
+                # 日志写失败（Windows 下杀毒/索引服务可能瞬时锁文件）
+                # 绝不能因为日志问题让整个请求 500 —— 降级为 stderr 提示
+                import sys
+                print(f"[request_log] 写盘失败，已跳过本条日志: {e}", file=sys.stderr)
 
 
 def classify_error(exc: Exception) -> str:

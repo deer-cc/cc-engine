@@ -1,4 +1,3 @@
-# 客服引擎 v1.0 配置
 {
   "llm_base_url": "http://127.0.0.1:15721",
   "llm_api_key": "PROXY_MANAGED",

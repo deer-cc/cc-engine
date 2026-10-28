@@ -12,10 +12,10 @@ from pathlib import Path
 
 # ─── 关键词规则（兜底）────────────────────────────────────
 KEYWORD_RULES = {
-    "shipping": ["物流", "快递", "发货", "什么时候到", "运费", "包邮", "配送", "驿站", "件"],
+    "shipping": ["物流", "快递", "发货", "什么时候到", "运费", "包邮", "配送", "驿站", "几天到", "几天能到", "江浙沪"],
     "returns": ["退换", "退货", "退款", "不满意", "质量问题", "换货", "退回", "七天"],
-    "price": ["多少钱", "价格", "优惠", "便宜", "打折", "降价", "活动", "券"],
-    "product": ["什么材质", "尺寸", "规格", "颜色", "款式", "好不好", "正品", "真假"],
+    "price": ["多少钱", "价格", "优惠", "便宜", "打折", "降价", "活动", "券", "发票", "开票"],
+    "product": ["什么材质", "尺寸", "规格", "颜色", "款式", "好不好", "正品", "真假", "尺码", "偏大", "偏小"],
     "stock": ["有货", "库存", "还能买", "缺货", "预售", "补货"],
     "greeting": ["你好", "在吗", "嗨", "在不在", "hello", "hi"],
     "bye": ["再见", "拜拜", "谢谢", "感谢", "晚安"],
@@ -27,14 +27,17 @@ KEYWORD_PRIORITY = ["complaint", "returns", "shipping", "price", "product", "sto
 
 
 def classify_by_keywords(message: str) -> Optional[Dict[str, Any]]:
-    """关键词规则匹配（兜底，不依赖 LLM）"""
+    """关键词规则匹配（兜底，不依赖 LLM）— v1.1 增加置信度加权"""
     msg_lower = message.lower()
 
     for keyword in KEYWORD_PRIORITY:
         patterns = KEYWORD_RULES.get(keyword, [])
-        if any(p in msg_lower for p in patterns):
-            # 对 greeting/bye 设置低置信度
-            confidence = 0.9 if keyword not in ("greeting", "bye") else 0.7
+        matched = [p for p in patterns if p in msg_lower]
+        if matched:
+            # v1.1: 多关键词匹配时提高置信度
+            base_confidence = 0.9 if keyword not in ("greeting", "bye") else 0.7
+            match_count = len(matched)
+            confidence = min(base_confidence + match_count * 0.03, 0.99)
             return {
                 "intent": keyword,
                 "confidence": round(confidence, 2),
@@ -87,8 +90,8 @@ async def classify_by_llm(message: str, config: dict) -> Dict[str, Any]:
     messages = [{"role": "user", "content": f"用户消息：{message}"}]
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
+        async with httpx.AsyncClient(timeout=8) as client:
+            resp = await asyncio.wait_for(client.post(
                 f"{config['llm_base_url']}/v1/messages",
                 headers={
                     "Authorization": f"Bearer {config['llm_api_key']}",
@@ -100,7 +103,7 @@ async def classify_by_llm(message: str, config: dict) -> Dict[str, Any]:
                     "system": system_prompt,
                     "messages": messages
                 }
-            )
+            ), timeout=8)
             resp.raise_for_status()
             data = resp.json()
 
@@ -113,6 +116,8 @@ async def classify_by_llm(message: str, config: dict) -> Dict[str, Any]:
             result["method"] = "llm"
             return result
 
+    except asyncio.TimeoutError:
+        return {"intent": "unknown", "confidence": 0.0, "method": "timeout"}
     except Exception as e:
         # LLM 失败时降级为关键词匹配
         return {"intent": "unknown", "confidence": 0.0, "method": "error", "error": str(e)}
@@ -141,8 +146,11 @@ async def classify_intent(message: str, config: dict) -> Dict[str, Any]:
     # Step 1: LLM 分类
     llm_result = await classify_by_llm(message, config)
 
-    # Step 2: 如果 LLM 失败或置信度低，用关键词兜底
-    if llm_result.get("method") == "error" or llm_result.get("confidence", 0) < 0.5:
+    # Step 2: 如果 LLM 失败/低置信度/明确判 unknown，用关键词兜底
+    # （LLM 给出 unknown 时即使置信度高也不可信——它只是"没把握"，关键词有明确命中就该采信）
+    if (llm_result.get("method") == "error"
+            or llm_result.get("confidence", 0) < 0.5
+            or llm_result.get("intent") == "unknown"):
         keyword_result = classify_by_keywords(message)
         if keyword_result:
             keyword_result["confidence"] = max(keyword_result["confidence"], llm_result.get("confidence", 0))

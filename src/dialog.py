@@ -6,6 +6,7 @@ LLM回复生成：高置信度时生成个性化回复（v2.0）
 企业增强：429/522 分错处理 + 降级原因回传（供全链路日志）
 """
 import asyncio
+import re
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
@@ -110,7 +111,8 @@ class DialogManager:
         try:
             kb_context = ""
             if kb_results:
-                kb_context = "\n".join(r.get("content", "")[:300] for r in kb_results[:2])
+                # 取前 3 块（原先只给 2 块，容易漏掉排在后面的正确片段）
+                kb_context = "\n".join(r.get("content", "")[:300] for r in kb_results[:3])
 
             system_prompt = """你是一个专业且友好的电商客服助手。根据知识库内容回答用户问题，要求：
 1. 回答简洁准确，直接解决用户问题
@@ -173,6 +175,23 @@ class DialogManager:
             self.session["_last_degrade"] = {"reason": "llm_error_fallback", "error_type": "other"}
             return None
 
+    @staticmethod
+    def _clean_kb_text(kb: List[Dict], min_len: int = 40, max_len: int = 200) -> Optional[str]:
+        """
+        从检索结果里挑一条"有实质内容"的块并清洗 markdown。
+        跳过只有标题/过短的块（如 "# 退换货规则"），避免模板兜底吐出裸标题。
+        """
+        for r in kb or []:
+            raw = (r.get("content") or "").strip()
+            # 去掉 markdown 标记后判断实质长度
+            plain = re.sub(r'^#+\s*', '', raw, flags=re.M)
+            plain = re.sub(r'\*\*|__|`', '', plain)
+            plain = re.sub(r'^\s*[-*+]\s*', '', plain, flags=re.M)
+            plain = re.sub(r'\s+', ' ', plain).strip()
+            if len(plain) >= min_len:
+                return plain[:max_len]
+        return None
+
     def _reply_greeting(self, msg: str, intent: dict, kb: list) -> str:
         return "你好！我是智能客服助手，有什么可以帮您的？"
 
@@ -180,34 +199,40 @@ class DialogManager:
         return "感谢您的咨询，祝您生活愉快！有其他问题随时联系我们~"
 
     def _reply_shipping(self, msg: str, intent: dict, kb: list) -> str:
-        if kb:
-            kb_text = kb[0].get("content", "")[:200]
-            return f"关于物流问题：{kb_text}...\n\n如需进一步咨询，请提供更详细的订单信息。"
+        text = self._clean_kb_text(kb)
+        if text:
+            return f"关于物流问题：{text}"
         return "您好！关于物流问题，一般发货后3-5个工作日送达。如需查询具体订单物流，请提供订单号。"
 
     def _reply_returns(self, msg: str, intent: dict, kb: list) -> str:
-        if kb:
-            kb_text = kb[0].get("content", "")[:200]
-            return f"关于退换货：{kb_text}...\n\n如需办理退货，请通过订单页面申请。"
+        text = self._clean_kb_text(kb)
+        if text:
+            return f"关于退换货：{text}"
         return "您好！支持7天无理由退换货（不影响二次销售）。质量问题可享受全额退款。请提供订单号和具体问题描述。"
 
     def _reply_price(self, msg: str, intent: dict, kb: list) -> str:
+        text = self._clean_kb_text(kb)
+        if text:
+            return text
         return "您好！目前店铺有满减活动，满199减20，满299减50。具体商品价格请看商品详情页。"
 
     def _reply_product(self, msg: str, intent: dict, kb: list) -> str:
-        if kb:
-            kb_text = kb[0].get("content", "")[:200]
-            return f"关于商品详情：{kb_text}..."
+        text = self._clean_kb_text(kb)
+        if text:
+            return f"关于商品详情：{text}"
         return "您好！请问您想了解哪款商品的详情？可以提供商品名称或链接，我帮您查询。"
 
     def _reply_stock(self, msg: str, intent: dict, kb: list) -> str:
+        text = self._clean_kb_text(kb)
+        if text:
+            return text
         return "您好！商品库存状态会在页面实时更新。如需确认特定商品库存，请告知商品名称。"
 
     def _reply_complaint(self, msg: str, intent: dict, kb: list) -> str:
         return "非常抱歉给您带来不好的体验！请您详细描述问题，我们会第一时间为您处理。您也可以拨打客服电话：400-XXX-XXXX。"
 
     def _reply_unknown(self, msg: str, intent: dict, kb: list) -> str:
-        if kb:
-            kb_text = kb[0].get("content", "")[:150]
-            return f"我理解您的问题。关于这个话题：{kb_text}...\n\n如果这不是您想问的，请重新描述您的问题。"
+        text = self._clean_kb_text(kb, min_len=20, max_len=150)
+        if text:
+            return f"我理解您的问题。关于这个话题：{text}"
         return "抱歉，我没有完全理解您的问题。请换个说法，或者告诉我您具体想咨询什么？"

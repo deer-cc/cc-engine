@@ -28,6 +28,11 @@ async def demo():
         .bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
         .message.user .bubble { background: #667eea; color: white; border-bottom-right-radius: 4px; }
         .message.assistant .bubble { background: #f0f0f0; color: #333; border-bottom-left-radius: 4px; }
+        .typing-indicator { display: inline-block; padding: 2px 8px; }
+        .typing-indicator span { animation: blink 1.4s infinite both; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
         .input-area { display: flex; gap: 8px; }
         .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 24px; outline: none; font-size: 14px; }
         .input-area input:focus { border-color: #667eea; }
@@ -35,10 +40,13 @@ async def demo():
         .input-area button:hover { background: #5a6fd6; }
         .input-area button:disabled { background: #ccc; cursor: not-allowed; }
         .status { text-align: center; color: #999; font-size: 12px; margin-top: 12px; }
+        .status.loading { color: #667eea; }
+        .status.error { color: #e74c3c; }
         .quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
         .quick-reply { padding: 6px 12px; background: #f0f0f0; border: none; border-radius: 16px; font-size: 12px; cursor: pointer; }
         .quick-reply:hover { background: #e0e0e0; }
         .meta { font-size: 11px; color: #999; margin-top: 4px; }
+        .bubble.typing { min-width: 60px; }
     </style>
 </head>
 <body>
@@ -67,6 +75,7 @@ async def demo():
 <script>
 let sessionId = 'demo_' + Date.now();
 let turnCount = 0;
+let isTyping = false;
 
 function addMessage(text, role, intent, confidence) {
     const messages = document.getElementById('messages');
@@ -81,15 +90,46 @@ function addMessage(text, role, intent, confidence) {
     messages.scrollTop = messages.scrollHeight;
 }
 
+// P2: 打字机效果
+function addTypingMessage() {
+    const messages = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'message assistant';
+    div.id = 'typing-msg';
+    div.innerHTML = `<div class="bubble typing"><span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span></div>`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function removeTypingMessage() {
+    const el = document.getElementById('typing-msg');
+    if (el) el.remove();
+}
+
+// P2: 打字机效果显示文本
+function typeWriter(element, text, index, callback) {
+    if (index < text.length) {
+        element.textContent = text.substring(0, index + 1);
+        setTimeout(() => typeWriter(element, text, index + 1, callback), 30);
+    } else {
+        if (callback) callback();
+    }
+}
+
 async function sendMessage() {
     const input = document.getElementById('input');
     const btn = document.getElementById('sendBtn');
+    const status = document.getElementById('status');
     const text = input.value.trim();
     if (!text) return;
 
     input.value = '';
     btn.disabled = true;
+    btn.textContent = '发送中...';
+    status.textContent = '思考中...';
+    status.className = 'status loading';
     addMessage(text, 'user');
+    addTypingMessage();  // P3: 显示打字机指示器
 
     try {
         const resp = await fetch('/chat', {
@@ -98,13 +138,41 @@ async function sendMessage() {
             body: JSON.stringify({message: text, session_id: sessionId})
         });
         const data = await resp.json();
-        addMessage(data.reply, 'assistant', data.intent, data.confidence);
-        turnCount = data.turn_count;
-        document.getElementById('status').textContent = `第 ${data.turn_count} 轮对话`;
+
+        // P2: 打字机效果
+        removeTypingMessage();
+        const messages = document.getElementById('messages');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message assistant';
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        let meta = '';
+        if (data.intent) {
+            meta = `<div class="meta">意图: ${data.intent} | 置信度: ${(data.confidence*100).toFixed(0)}%</div>`;
+        }
+        msgDiv.appendChild(bubble);
+        msgDiv.insertAdjacentHTML('beforeend', meta);
+        messages.appendChild(msgDiv);
+
+        // P2: 流式打字机效果
+        isTyping = true;
+        typeWriter(bubble, data.reply, 0, () => {
+            isTyping = false;
+            turnCount = data.turn_count;
+            status.textContent = `第 ${data.turn_count} 轮对话`;
+            status.className = 'status';
+            messages.scrollTop = messages.scrollHeight;
+        });
     } catch(e) {
-        addMessage('网络错误，请重试', 'assistant');
+        removeTypingMessage();
+        let errorMsg = '网络错误，请重试';
+        if (e.name === 'AbortError') errorMsg = '请求超时，请稍后再试';
+        addMessage(errorMsg, 'assistant');
+        status.textContent = '连接失败';
+        status.className = 'status error';
     }
     btn.disabled = false;
+    btn.textContent = '发送';
     input.focus();
 }
 

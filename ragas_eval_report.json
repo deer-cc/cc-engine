@@ -1,0 +1,286 @@
+{
+  "eval_set": "eval_set.json",
+  "retrieval": [
+    {
+      "query": "怎么退货",
+      "expected": {
+        "source": "returns.md",
+        "anchor": "七天无理由"
+      },
+      "hit": false,
+      "rank": null,
+      "semantic_hit": true,
+      "results_count": 3
+    },
+    {
+      "query": "退货后多久退款",
+      "expected": {
+        "source": "returns.md",
+        "anchor": "退款时效"
+      },
+      "hit": false,
+      "rank": null,
+      "semantic_hit": true,
+      "results_count": 3
+    },
+    {
+      "query": "七天无理由退货支持吗",
+      "expected": {
+        "source": "returns.md",
+        "anchor": "七天无理由"
+      },
+      "hit": true,
+      "rank": 1,
+      "semantic_hit": false,
+      "results_count": 3
+    },
+    {
+      "query": "换货怎么操作",
+      "expected": {
+        "source": "returns.md",
+        "anchor": "换货流程"
+      },
+      "hit": true,
+      "rank": 2,
+      "semantic_hit": false,
+      "results_count": 3
+    },
+    {
+      "query": "质量问题能退吗",
+      "expected": {
+        "source": "returns.md",
+        "anchor": "质量问题"
+      },
+      "hit": true,
+      "rank": 1,
+      "semantic_hit": false,
+      "results_count": 3
+    },
+    {
+      "query": "退货运费谁出",
+      "expected": {
+        "source": "returns.md",
+        "anchor": "退货运费险"
+      },
+      "hit": true,
+      "rank": 2,
+      "semantic_hit": false,
+      "results_count": 3
+    },
+    {
+      "query": "发货要多久",
+      "expected": {
+        "source": "shipping.md",
+        "anchor": "发货时效"
+      },
+      "hit": false,
+      "rank": null,
+      "semantic_hit": true,
+      "results_count": 3
+    },
+    {
+      "query": "江浙沪几天到",
+      "expected": {
+        "source": "shipping.md",
+        "anchor": "快递时效"
+      },
+      "hit": true,
+      "rank": 1,
+      "semantic_hit": false,
+      "results_count": 2
+    },
+    {
+      "query": "运费怎么算",
+      "expected": {
+        "source": "shipping.md",
+        "anchor": "运费标准"
+      },
+      "hit": true,
+      "rank": 3,
+      "semantic_hit": false,
+      "results_count": 3
+    },
+    {
+      "query": "满多少包邮",
+      "expected": {
+        "source": "shipping.md",
+        "anchor": "包邮"
+      },
+      "hit": true,
+      "rank": 1,
+      "semantic_hit": false,
+      "results_count": 2
+    },
+    {
+      "query": "有优惠券吗",
+      "expected": {
+        "source": "faq.md",
+        "anchor": "优惠券"
+      },
+      "hit": true,
+      "rank": 1,
+      "semantic_hit": false,
+      "results_count": 2
+    },
+    {
+      "query": "优惠券怎么用",
+      "expected": {
+        "source": "faq.md",
+        "anchor": "优惠券怎么用"
+      },
+      "hit": true,
+      "rank": 1,
+      "semantic_hit": false,
+      "results_count": 2
+    },
+    {
+      "query": "可以开发票吗",
+      "expected": {
+        "source": "faq.md",
+        "anchor": "发票"
+      },
+      "hit": true,
+      "rank": 1,
+      "semantic_hit": false,
+      "results_count": 3
+    },
+    {
+      "query": "商品尺码偏大还是偏小",
+      "expected": {
+        "source": "faq.md",
+        "anchor": "尺码偏大还是偏小"
+      },
+      "hit": true,
+      "rank": 1,
+      "semantic_hit": false,
+      "results_count": 3
+    },
+    {
+      "query": "还能买吗",
+      "expected": {
+        "source": "faq.md",
+        "anchor": "没货了还能买吗"
+      },
+      "hit": true,
+      "rank": 1,
+      "semantic_hit": false,
+      "results_count": 1
+    }
+  ],
+  "intent": [
+    {
+      "query": "怎么退货",
+      "predicted": "returns",
+      "expected": "returns",
+      "confidence": 0.93,
+      "correct": true
+    },
+    {
+      "query": "退货后多久退款",
+      "predicted": "returns",
+      "expected": "returns",
+      "confidence": 0.96,
+      "correct": true
+    },
+    {
+      "query": "七天无理由退货支持吗",
+      "predicted": "returns",
+      "expected": "returns",
+      "confidence": 0.97,
+      "correct": true
+    },
+    {
+      "query": "换货怎么操作",
+      "predicted": "returns",
+      "expected": "returns",
+      "confidence": 0.97,
+      "correct": true
+    },
+    {
+      "query": "质量问题能退吗",
+      "predicted": "returns",
+      "expected": "returns",
+      "confidence": 0.95,
+      "correct": true
+    },
+    {
+      "query": "退货运费谁出",
+      "predicted": "returns",
+      "expected": "returns",
+      "confidence": 0.93,
+      "correct": true
+    },
+    {
+      "query": "发货要多久",
+      "predicted": "shipping",
+      "expected": "shipping",
+      "confidence": 0.98,
+      "correct": true
+    },
+    {
+      "query": "江浙沪几天到",
+      "predicted": "shipping",
+      "expected": "shipping",
+      "confidence": 0.96,
+      "correct": true
+    },
+    {
+      "query": "运费怎么算",
+      "predicted": "shipping",
+      "expected": "shipping",
+      "confidence": 0.97,
+      "correct": true
+    },
+    {
+      "query": "满多少包邮",
+      "predicted": "shipping",
+      "expected": "shipping",
+      "confidence": 0.98,
+      "correct": true
+    },
+    {
+      "query": "有优惠券吗",
+      "predicted": "price",
+      "expected": "price",
+      "confidence": 0.98,
+      "correct": true
+    },
+    {
+      "query": "优惠券怎么用",
+      "predicted": "price",
+      "expected": "price",
+      "confidence": 0.9,
+      "correct": true
+    },
+    {
+      "query": "可以开发票吗",
+      "predicted": "price",
+      "expected": "price",
+      "confidence": 0.93,
+      "correct": true
+    },
+    {
+      "query": "商品尺码偏大还是偏小",
+      "predicted": "product",
+      "expected": "product",
+      "confidence": 0.95,
+      "correct": true
+    },
+    {
+      "query": "还能买吗",
+      "predicted": "stock",
+      "expected": "stock",
+      "confidence": 0.9,
+      "correct": true
+    }
+  ],
+  "summary": {
+    "total_queries": 15,
+    "recall_at_k": 0.8,
+    "mrr": 0.6889,
+    "semantic_hit_rate": 0.2,
+    "intent_accuracy": 1.0,
+    "retrieval_quality": "优秀",
+    "intent_quality": "优秀"
+  }
+}

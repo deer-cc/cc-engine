@@ -1,13 +1,23 @@
 """
 知识库检索模块
 双路召回：关键词匹配 + TF-IDF 向量相似度
+查询改写：口语化输入 → 标准术语扩展
+TTL缓存：相同query在30s内直接返回缓存结果
 """
 import re
 import json
 import math
+import time
 from pathlib import Path
 from typing import List, Dict, Any
 from datetime import datetime
+
+from src.query_rewriter import rewrite_query, extract_keywords_improved
+
+
+# P2优化：检索结果缓存，相同query在TTL内直接返回
+_kb_cache: Dict[str, tuple] = {}
+KB_CACHE_TTL = 30  # 秒
 
 
 class KnowledgeBase:
@@ -62,7 +72,7 @@ class KnowledgeBase:
                         "content": current_chunk,
                         "source": source,
                         "title": current_title,
-                        "keywords": self._extract_keywords(current_chunk)
+                        "keywords": self._extract_keywords_v2(current_chunk)  # P1: 统一使用改进版
                     })
                 current_title = para.replace("#", "").strip()
                 current_chunk = para
@@ -76,7 +86,7 @@ class KnowledgeBase:
                     "content": current_chunk[:chunk_size],
                     "source": source,
                     "title": current_title,
-                    "keywords": self._extract_keywords(current_chunk[:chunk_size])
+                    "keywords": self._extract_keywords_v2(current_chunk[:chunk_size])  # P1: 统一使用改进版
                 })
                 current_chunk = current_chunk[chunk_size:]
 
@@ -86,13 +96,13 @@ class KnowledgeBase:
                 "content": current_chunk,
                 "source": source,
                 "title": current_title,
-                "keywords": self._extract_keywords(current_chunk)
+                "keywords": self._extract_keywords_v2(current_chunk)  # P1: 统一使用改进版
             })
 
         return chunks
 
     def _extract_keywords(self, text: str) -> List[str]:
-        """提取关键词（双字滑窗 + 英文单词）"""
+        """提取关键词（双字滑窗 + 英文单词）— v1.0 基础版，保留用于兼容"""
         keywords = set()
         # 中文双字滑窗
         text_cn = re.sub(r'[^一-龥]', '', text)
@@ -103,6 +113,10 @@ class KnowledgeBase:
             if len(word) >= 2:
                 keywords.add(word.lower())
         return list(keywords)
+
+    def _extract_keywords_v2(self, text: str) -> List[str]:
+        """提取关键词（改进版 v1.1）— 使用 query_rewriter 的改进逻辑"""
+        return extract_keywords_improved(text)
 
     def _build_index(self, chunk_id: int, chunk: Dict):
         """构建倒排索引和 TF-IDF"""
@@ -122,8 +136,12 @@ class KnowledgeBase:
             self.tf_idf[chunk_id][kw] = tf * idf
 
     def search(self, query: str, top_k: int = 3) -> List[Dict]:
-        """混合检索：关键词匹配 + TF-IDF 向量相似度"""
-        query_keywords = self._extract_keywords(query)
+        """混合检索：查询改写 + 关键词匹配 + TF-IDF 向量相似度（v1.1）"""
+        # Step 1: 查询改写（口语化 → 标准术语）
+        rewritten_query = rewrite_query(query)
+
+        # Step 2: 关键词提取（使用改进版）
+        query_keywords = self._extract_keywords_v2(rewritten_query)
 
         # 召回候选 chunks
         candidate_ids = set()
@@ -177,14 +195,33 @@ def get_kb(knowledge_dir: Path = None) -> KnowledgeBase:
 
 
 async def search_kb(query: str, k: int = 3) -> List[Dict]:
-    """异步搜索知识库"""
+    """异步搜索知识库（带TTL缓存+过期清理）"""
+    # P3: 清理过期条目（防止内存泄漏）
+    now = time.time()
+    expired_keys = [k for k, (v, t) in _kb_cache.items() if now - t >= KB_CACHE_TTL]
+    for k in expired_keys:
+        del _kb_cache[k]
+
+    # P2: 检查缓存
+    cache_key = f"{query}:{k}"
+    if cache_key in _kb_cache:
+        results, cached_at = _kb_cache[cache_key]
+        return results
+
+    # 未命中缓存，执行检索
     kb = get_kb()
-    return kb.search(query, top_k=k)
+    results = kb.search(query, top_k=k)
+
+    # 写入缓存
+    _kb_cache[cache_key] = (results, now)
+    return results
 
 
 async def refresh_kb(knowledge_dir: Path = None):
-    """重新加载知识库"""
+    """重新加载知识库并清空缓存"""
     global _kb_instance
     kb_dir = knowledge_dir or Path(__file__).parent.parent / "knowledge"
     _kb_instance = KnowledgeBase(kb_dir)
+    # P2: 清空检索缓存
+    _kb_cache.clear()
     return {"status": "ok", "chunks": len(_kb_instance.chunks)}

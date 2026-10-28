@@ -77,8 +77,12 @@ def load_config() -> dict:
         if CONFIG_FILE.exists():
             try:
                 _config_cache = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-            except:
-                pass
+            except Exception as e:
+                import warnings
+                warnings.warn(
+                    f"[config] config.json 解析失败，回退到默认配置: {e}",
+                    stacklevel=2,
+                )
         if _config_cache is None:
             _config_cache = {
                 "llm_base_url": os.getenv("ANTHROPIC_BASE_URL", "http://127.0.0.1:15721"),
