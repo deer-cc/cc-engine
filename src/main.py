@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import json
@@ -123,6 +124,47 @@ def save_conversation(session_id: str, data: dict):
 
 
 # ─── 路由 ────────────────────────────────────────────────
+
+@app.get("/")
+async def root():
+    """演示页入口 — 返回简单的对话测试界面"""
+    html = """<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>客服引擎演示</title>
+<style>
+body{font-family:sans-serif;max-width:640px;margin:40px auto;padding:0 16px}
+pre{background:#f5f5f5;padding:12px;border-radius:6px;overflow:auto}
+input[type=text]{width:70%;padding:8px;font-size:16px}
+button{padding:8px 16px;font-size:16px;cursor:pointer}
+.log{margin-top:20px}
+.log p{border-bottom:1px solid #eee;padding:8px 0}
+</style>
+</head>
+<body>
+<h2>客服引擎</h2>
+<form id="f" onsubmit="send();return false">
+<input id="q" type="text" placeholder="输入问题，例如：优惠券怎么用？" autofocus>
+<button type="submit">发送</button>
+</form>
+<div class="log" id="log"></div>
+<script>
+async function send(){
+  const q=document.getElementById('q');
+  const text=q.value.trim();if(!text)return;
+  q.value='';
+  const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,session_id:'demo'})});
+  const j=await r.json();
+  const p=document.createElement('pre');
+  p.textContent='用户: '+text+'\\n意图: '+j.intent+' ('+Math.round(j.confidence*100)+'%)\\n回复: '+j.reply;
+  document.getElementById('log').appendChild(p);
+}
+</script>
+</body>
+</html>"""
+    return HTMLResponse(html)
+
 
 @app.get("/health")
 async def health():

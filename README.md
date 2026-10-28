@@ -2,9 +2,11 @@
 
 > FastAPI + LLM Intent Recognition + Multi-turn Dialog + RAG Knowledge Base
 
-A production-ready customer service agent showcasing AI dialogue engineering capabilities: intent classification, multi-turn state management, retrieval-augmented generation, and full engineering standards (pytest + Docker + CI).
+A customer service agent showcasing AI dialogue engineering capabilities: intent classification, multi-turn state management, retrieval-augmented generation, and full engineering standards (pytest + Docker + CI).
 
-**Quick facts**: 66/66 tests passing · Recall@3 80% (15-query labeled set) · MRR 0.689 · intent accuracy 100% · 7 API endpoints · ~1,100 LOC
+**Quick facts**: 68/68 tests passing · Recall@3 80% · MRR 0.689 · intent accuracy 100% · 8 API endpoints + 1 demo page · ~1,200 LOC
+
+> Metrics are measured on a 15-query labeled set (`tests/eval_set.json`) whose expected answers were derived from the same keyword rules the engine uses — an **in-sample** figure. A held-out set with colloquial queries not in the keyword table would show a lower number (see RETRIEVAL_TUNING.md §5).
 
 ```bash
 pip install -r requirements.txt && pytest tests/ -q   # test
@@ -22,6 +24,7 @@ User Message
     ↓
 ┌─────────────────────────────────────────────┐
 │  FastAPI Server (:8899)                     │
+│  GET  /      ← Demo page (chat UI)          │
 │  POST /chat   ← Main conversation entry     │
 │  POST /intent ← Intent detection            │
 │  POST /kb/search ← Knowledge base search   │
@@ -76,7 +79,7 @@ User Message
 ```bash
 # 1. Clone and setup
 git clone <your-repo>
-cd customer-service-engine
+cd cckefu
 pip install -r requirements.txt
 
 # 2. Configure (optional)
@@ -156,9 +159,9 @@ Content-Type: application/json
 ## Project Structure
 
 ```
-customer-service-engine/
+cckefu/
 ├── src/
-│   ├── main.py            # FastAPI application
+│   ├── main.py            # FastAPI application (含 / 路由内嵌演示页)
 │   ├── intent.py          # Intent classification (LLM + keywords)
 │   ├── dialog.py          # Multi-turn dialogue state machine
 │   ├── rag.py             # Knowledge base retrieval engine
@@ -168,8 +171,6 @@ customer-service-engine/
 │   ├── shipping.md        # Shipping policies
 │   └── returns.md         # Return/exchange policies
 ├── conversations/         # Session history (auto-generated)
-├── static/
-│   └── index.html         # Web demo UI
 ├── tests/
 │   ├── eval_set.json      # 15-query labeled retrieval eval set
 │   ├── test_intent.py
@@ -178,7 +179,8 @@ customer-service-engine/
 │   ├── test_confidence.py
 │   ├── test_query_rewriter.py
 │   ├── test_request_log.py
-│   └── test_config.py
+│   ├── test_config.py
+│   └── test_http.py       # TestClient 集成测试（/ + /health）
 ├── src/ragas_eval.py      # Recall@K / MRR evaluation
 ├── config.json            # Runtime configuration
 ├── .env.example           # Environment template
@@ -199,7 +201,7 @@ pytest tests/ -v
 pytest tests/ --cov=src --cov-report=term-missing
 ```
 
-**Test Coverage**: 66/66 tests passing
+**Test Coverage**: 68/68 tests passing
 
 | Module | Tests | Status |
 |:-------|:-----:|:------:|
@@ -210,7 +212,8 @@ pytest tests/ --cov=src --cov-report=term-missing
 | `confidence.py` | 19 | ✅ |
 | `request_log.py` | 11 | ✅ |
 | `config.json` validity | 3 | ✅ |
-| **Total** | **66** | **✅** |
+| `test_http.py` (HTTP 集成) | 2 | ✅ |
+| **Total** | **68** | **✅** |
 
 ---
 
@@ -265,10 +268,10 @@ The architecture supports easy extension:
 
 | Metric | Value |
 |:-------|:-----:|
-| Lines of Code | ~1,100 |
-| Tests | 66/66 passing |
-| API Endpoints | 7 |
-| Knowledge Chunks | 28 |
+| Lines of Code | ~1,200 |
+| Tests | 68/68 passing |
+| API Endpoints | 8 (+1 demo page) |
+| Knowledge Chunks | 29 |
 | Retrieval Recall@3 | 80.0% (15-query labeled set) |
 | Retrieval MRR | 0.689 |
 | Intent Accuracy | 100% |
