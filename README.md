@@ -17,6 +17,18 @@ Docs: [DELIVERY.md](DELIVERY.md) · [DESIGN.md](DESIGN.md) · [RETRIEVAL_TUNING.
 
 ---
 
+## Demo
+
+![Demo](docs/screenshots/demo.gif)
+
+The built-in page at `/` — type a question or click a sample, get **intent + confidence + KB-grounded reply** in a multi-turn session.
+
+Auto-generated API docs at `/docs` (FastAPI/OpenAPI):
+
+![API docs](docs/screenshots/api-docs.png)
+
+---
+
 ## Architecture
 
 ```

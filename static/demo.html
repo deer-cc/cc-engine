@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客服引擎 · 演示</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: #f1f5f9;
+    color: #0f172a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+  }
+  .wrap { width: 100%; max-width: 720px; }
+  header { margin-bottom: 20px; }
+  h1 { font-size: 22px; color: #1e3a8a; letter-spacing: .3px; }
+  .sub { color: #64748b; font-size: 13px; margin-top: 4px; }
+  .badges { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    background: #e0e7ff; color: #3730a3;
+    font-size: 11px; padding: 3px 8px; border-radius: 999px;
+  }
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip {
+    background: #fff; border: 1px solid #cbd5e1; color: #334155;
+    font-size: 12.5px; padding: 6px 12px; border-radius: 999px;
+    cursor: pointer; transition: .15s;
+  }
+  .chip:hover { border-color: #2563eb; color: #1d4ed8; background: #eff6ff; }
+  .chat {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 18px; min-height: 320px; max-height: 520px; overflow-y: auto;
+    box-shadow: 0 1px 3px rgba(15,23,42,.06);
+  }
+  .empty { color: #94a3b8; font-size: 13px; text-align: center; padding: 100px 0; }
+  .msg { margin-bottom: 16px; display: flex; }
+  .msg.user { justify-content: flex-end; }
+  .bubble {
+    max-width: 78%; padding: 10px 14px; border-radius: 12px;
+    font-size: 13.5px; line-height: 1.6; white-space: pre-wrap;
+  }
+  .user .bubble { background: #2563eb; color: #fff; border-bottom-right-radius: 4px; }
+  .bot .bubble { background: #f8fafc; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; }
+  .meta {
+    display: flex; gap: 8px; margin-top: 6px; font-size: 11px; color: #64748b;
+    flex-wrap: wrap;
+  }
+  .meta span { background: #f1f5f9; padding: 2px 7px; border-radius: 4px; }
+  .meta .ok { background: #dcfce7; color: #166534; }
+  .meta .mid { background: #fef9c3; color: #854d0e; }
+  .meta .low { background: #fee2e2; color: #991b1b; }
+  form { display: flex; gap: 8px; margin-top: 14px; }
+  input[type=text] {
+    flex: 1; padding: 11px 14px; font-size: 14px;
+    border: 1px solid #cbd5e1; border-radius: 10px; outline: none;
+    font-family: inherit;
+  }
+  input[type=text]:focus { border-color: #2563eb; box-shadow: 0 0 0 3px #dbeafe; }
+  button {
+    padding: 11px 22px; font-size: 14px; font-family: inherit;
+    background: #2563eb; color: #fff; border: none; border-radius: 10px;
+    cursor: pointer; transition: .15s;
+  }
+  button:hover { background: #1d4ed8; }
+  button:disabled { background: #94a3b8; cursor: default; }
+  footer { margin-top: 16px; font-size: 11.5px; color: #94a3b8; text-align: center; }
+  footer a { color: #64748b; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>客服引擎</h1>
+    <div class="sub">FastAPI · 意图识别 · RAG 知识检索 · 多轮对话</div>
+    <div class="badges">
+      <span class="badge">68 个测试全绿</span>
+      <span class="badge">Recall@3 80%</span>
+      <span class="badge">8 个 HTTP 接口</span>
+    </div>
+  </header>
+
+  <div class="examples">
+    <button type="button" class="chip" onclick="ask('优惠券怎么用？')">优惠券怎么用？</button>
+    <button type="button" class="chip" onclick="ask('发货要多久')">发货要多久</button>
+    <button type="button" class="chip" onclick="ask('怎么退货')">怎么退货</button>
+    <button type="button" class="chip" onclick="ask('还能买吗')">还能买吗</button>
+  </div>
+
+  <div class="chat" id="chat">
+    <div class="empty" id="empty">输入一个问题，或点上面的示例开始</div>
+  </div>
+
+  <form onsubmit="submitForm(event)">
+    <input type="text" id="q" placeholder="输入你的问题…" autocomplete="off">
+    <button type="submit" id="send">发送</button>
+  </form>
+
+  <footer>接口文档 <a href="/docs" target="_blank">/docs</a> · 健康检查 <a href="/health" target="_blank">/health</a></footer>
+</div>
+
+<script>
+let sessionId = 'demo-' + Math.random().toString(36).slice(2, 8);
+
+function submitForm(e) {
+  e.preventDefault();
+  ask(document.getElementById('q').value.trim());
+  document.getElementById('q').value = '';
+}
+
+async function ask(text) {
+  if (!text) return;
+  const empty = document.getElementById('empty');
+  if (empty) empty.remove();
+
+  addMessage('user', text);
+  const btn = document.getElementById('send');
+  btn.disabled = true;
+
+  try {
+    const r = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, session_id: sessionId })
+    });
+    const j = await r.json();
+    const lvl = j.confidence_level === 'high' ? 'ok' : (j.confidence_level === 'medium' ? 'mid' : 'low');
+    addMessage('bot', j.reply, [
+      { text: '意图: ' + j.intent, cls: '' },
+      { text: '置信度 ' + Math.round(j.confidence * 100) + '%', cls: lvl },
+      { text: '第 ' + j.turn_count + ' 轮', cls: '' }
+    ]);
+  } catch (err) {
+    addMessage('bot', '请求失败：' + err.message);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('q').focus();
+  }
+}
+
+function addMessage(role, text, meta) {
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+
+  const inner = document.createElement('div');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  inner.appendChild(bubble);
+
+  if (meta) {
+    const m = document.createElement('div');
+    m.className = 'meta';
+    meta.forEach(x => {
+      const s = document.createElement('span');
+      if (x.cls) s.className = x.cls;
+      s.textContent = x.text;
+      m.appendChild(s);
+    });
+    inner.appendChild(m);
+  }
+
+  wrap.appendChild(inner);
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+</script>
+</body>
+</html>
