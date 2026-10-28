@@ -79,7 +79,7 @@ User Message
 ```bash
 # 1. Clone and setup
 git clone <your-repo>
-cd cckefu
+cd cc-engine
 pip install -r requirements.txt
 
 # 2. Configure (optional)
@@ -159,7 +159,7 @@ Content-Type: application/json
 ## Project Structure
 
 ```
-cckefu/
+cc-engine/
 ├── src/
 │   ├── main.py            # FastAPI application (含 / 路由内嵌演示页)
 │   ├── intent.py          # Intent classification (LLM + keywords)
