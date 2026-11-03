@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1180" font-family="-apple-system, 'Microsoft YaHei', sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L5,3 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L5,3 z" fill="#dc2626"/>
+    </marker>
+  </defs>
+
+  <style>
+    .layer-title { font-size: 15px; font-weight: 700; fill: #0f172a; }
+    .layer-sub { font-size: 12px; fill: #64748b; }
+    .box { font-size: 13px; fill: #1e293b; }
+    .box-title { font-size: 13.5px; font-weight: 600; fill: #0f172a; }
+    .box-note { font-size: 11px; fill: #64748b; }
+    .new { fill: #dc2626; font-size: 11px; font-weight: 700; }
+    .flow { stroke: #475569; stroke-width: 1.5; fill: none; }
+    .flow-red { stroke: #dc2626; stroke-width: 2; fill: none; stroke-dasharray: 5,3; }
+    .lane-bg { fill: #f8fafc; stroke: #e2e8f0; }
+    .lane-1 { fill: #eff6ff; }
+    .lane-2 { fill: #f0fdf4; }
+    .lane-3 { fill: #fefce8; }
+    .lane-4 { fill: #faf5ff; }
+  </style>
+
+  <!-- 标题 -->
+  <text x="480" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">cc-engine 智能客服引擎 · 架构框架图（v3.1）</text>
+  <text x="480" y="56" text-anchor="middle" class="layer-sub">红色虚线 = 本次新增/改动 ①语义检索层 ②转人工硬规则 ③embedding 缓存</text>
+
+  <!-- ══════════ 第 1 层：接口层 ══════════ -->
+  <rect x="40" y="80" width="880" height="120" rx="10" class="lane-bg lane-1"/>
+  <text x="60" y="108" class="layer-title">① 接口层</text>
+  <text x="60" y="128" class="layer-sub">FastAPI /chat 入口 · 请求解析 · 全链路 RequestLog</text>
+
+  <!-- 意图识别 box -->
+  <rect x="70" y="140" width="250" height="50" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="86" y="163" class="box-title">/chat → 意图识别</text>
+  <text x="86" y="180" class="box-note">LLM 主 + 关键词兜底</text>
+
+  <!-- 检索条件 box（v3.1 改动：unknown 也检索）-->
+  <rect x="350" y="140" width="300" height="50" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-dasharray="4,3"/>
+  <text x="366" y="161" class="box-title">检索触发条件（v3.1 放宽）</text>
+  <text x="366" y="178" class="box-note">含 unknown 意图也走检索，语义层才有 query 文本</text>
+  <text x="630" y="158" class="new">NEW</text>
+
+  <!-- 上下文指代 box（v3.1 P1）-->
+  <rect x="680" y="140" width="220" height="50" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-dasharray="4,3"/>
+  <text x="696" y="161" class="box-title">上下文指代消解</text>
+  <text x="696" y="178" class="box-note">LLM 结合 history 补全"这个/几久"</text>
+  <text x="880" y="158" class="new">NEW</text>
+
+  <!-- ══════════ 第 2 层：检索层（核心改动）══════════ -->
+  <rect x="40" y="220" width="880" height="300" rx="10" class="lane-bg lane-2"/>
+  <text x="60" y="248" class="layer-title">② 检索层（双路并行召回）</text>
+  <text x="60" y="268" class="layer-sub">字面路打底 + 语义路补盲区，按 id 去重合并取 top_k</text>
+
+  <!-- 字面检索 box（原有）-->
+  <rect x="70" y="290" width="260" height="84" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="86" y="314" class="box-title">字面检索 TF-IDF</text>
+  <text x="86" y="332" class="box-note">倒排索引 + 双字滑窗</text>
+  <text x="86" y="350" class="box-note">query_rewriter 同义词扩展</text>
+  <text x="86" y="366" class="box-note" fill="#16a34a">■ 原有（保持不变）</text>
+
+  <!-- 语义检索 box（新增 ①）-->
+  <rect x="360" y="290" width="280" height="84" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-dasharray="4,3"/>
+  <text x="376" y="314" class="box-title">语义检索 embedding（新增 ①）</text>
+  <text x="376" y="332" class="box-note">bge-small-zh-v1.5 本地 CPU 推理</text>
+  <text x="376" y="350" class="box-note">余弦相似度 · 不走 15721 通道</text>
+  <text x="376" y="366" class="box-note" fill="#dc2626">■ 新增 embed.py + rag 双路</text>
+  <text x="620" y="308" class="new">NEW</text>
+
+  <!-- embedding 缓存 box（新增 ③）-->
+  <rect x="360" y="396" width="280" height="84" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-dasharray="4,3"/>
+  <text x="376" y="420" class="box-title">embedding 缓存（新增 ③）</text>
+  <text x="376" y="438" class="box-note">KB 指纹命中 → 跳过全量 encode</text>
+  <text x="376" y="456" class="box-note">每请求只算 query 向量 + 一次点积</text>
+  <text x="376" y="472" class="box-note" fill="#dc2626">■ 性能优化，砍 59s 大头</text>
+  <text x="620" y="414" class="new">NEW</text>
+
+  <!-- 语义缓存命中路径箭头 -->
+  <path d="M500,374 L500,396" class="flow-red" marker-end="url(#arrowRed)"/>
+
+  <!-- 合并 box（原有逻辑，微调）-->
+  <rect x="680" y="290" width="220" height="84" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="696" y="314" class="box-title">双路合并</text>
+  <text x="696" y="332" class="box-note">字面 top_k 打底</text>
+  <text x="696" y="350" class="box-note">语义补字面没覆盖的</text>
+  <text x="696" y="366" class="box-note" fill="#dc2626">match_type 标注来源</text>
+
+  <!-- 知识文件 box -->
+  <rect x="680" y="396" width="220" height="84" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="696" y="420" class="box-title">knowledge/*.md</text>
+  <text x="696" y="438" class="box-note">faq.md / shipping.md / returns.md</text>
+  <text x="696" y="456" class="box-note">全量 embedding 只算一次</text>
+
+  <!-- 字面→合并 箭头 -->
+  <path d="M330,332 L360,332" class="flow" marker-end="url(#arrow)"/>
+  <!-- 语义→合并 箭头 -->
+  <path d="M640,332 L680,332" class="flow-red" marker-end="url(#arrowRed)"/>
+  <!-- 知识→语义 箭头 -->
+  <path d="M680,438 L640,438" class="flow" marker-end="url(#arrow)"/>
+
+  <!-- 层间 接口→检索 箭头 -->
+  <path d="M500,190 L500,290" class="flow" marker-end="url(#arrow)"/>
+  <text x="510" y="240" class="box-note">query（消解后）</text>
+
+  <!-- ══════════ 第 3 层：回复层 ══════════ -->
+  <rect x="40" y="540" width="880" height="220" rx="10" class="lane-bg lane-3"/>
+  <text x="60" y="568" class="layer-title">③ 回复层（按意图 + 置信度路由）</text>
+  <text x="60" y="588" class="layer-sub">confidence 分层 high/medium/low · 低置信走澄清策略</text>
+
+  <!-- 转人工 box（新增 ②）-->
+  <rect x="70" y="606" width="270" height="92" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-dasharray="4,3"/>
+  <text x="86" y="630" class="box-title">转人工硬规则（新增 ②）</text>
+  <text x="86" y="648" class="box-note">承诺类 / 纠纷类 / 超纲类 命中关键词</text>
+  <text x="86" y="666" class="box-note">优先于所有分支，绝不硬答</text>
+  <text x="86" y="682" class="box-note" fill="#dc2626">■ 对标"宁慢勿错"，防乱回复</text>
+  <text x="330" y="624" class="new">NEW</text>
+
+  <!-- LLM 自然语言 box（v3.0 已有）-->
+  <rect x="370" y="606" width="280" height="92" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="386" y="630" class="box-title">LLM 自然语言回复</text>
+  <text x="386" y="648" class="box-note">KB 片段喂给 LLM，组织 2-3 句</text>
+  <text x="386" y="666" class="box-note">不吐原文 · 不编造 · 来源一句话备注</text>
+  <text x="386" y="682" class="box-note" fill="#16a34a">■ v3.0 已有</text>
+
+  <!-- 模板兜底 box（v3.0）-->
+  <rect x="680" y="606" width="220" height="92" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="696" y="630" class="box-title">模板兜底 + 澄清</text>
+  <text x="696" y="648" class="box-note">LLM 不可用时降级</text>
+  <text x="696" y="666" class="box-note">不硬拼多行 KB 片段</text>
+  <text x="696" y="682" class="box-note" fill="#16a34a">■ v3.0 已有</text>
+
+  <!-- 转人工→回复 箭头 -->
+  <path d="M340,652 L370,652" class="flow-red" marker-end="url(#arrowRed)"/>
+  <text x="345" y="645" class="box-note">命中→走转人工话术</text>
+
+  <!-- 检索→回复层 箭头 -->
+  <path d="M500,520 L500,606" class="flow" marker-end="url(#arrow)"/>
+  <text x="510" y="560" class="box-note">kb_results + intent</text>
+
+  <!-- ══════════ 第 4 层：降级与日志 ══════════ -->
+  <rect x="40" y="780" width="880" height="140" rx="10" class="lane-bg lane-4"/>
+  <text x="60" y="808" class="layer-title">④ 降级与全链路日志</text>
+  <text x="60" y="828" class="layer-sub">429/500/502 分错处理 · 降级原因回传 · token 用量统计</text>
+
+  <rect x="70" y="846" width="250" height="56" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="86" y="868" class="box-title">RequestLog</text>
+  <text x="86" y="886" class="box-note">request_id / 耗时 / 降级原因</text>
+
+  <rect x="360" y="846" width="280" height="56" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="376" y="868" class="box-title">分错降级（classify_error）</text>
+  <text x="376" y="886" class="box-note">429 限流 / 5xx 网关 / 4xx 鉴权 分错</text>
+
+  <rect x="680" y="846" width="220" height="56" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="696" y="868" class="box-title">/stats 健康巡检</text>
+  <text x="696" y="886" class="box-note">45s 自愈守护（计划任务）</text>
+
+  <!-- 回复层→日志 箭头 -->
+  <path d="M500,732 L500,780" class="flow" marker-end="url(#arrow)"/>
+
+  <!-- ══════════ 图例 ══════════ -->
+  <rect x="40" y="950" width="880" height="110" rx="8" fill="#fff" stroke="#e2e8f0"/>
+  <text x="60" y="976" class="layer-title" font-size="13">图例 &amp; 本次改动汇总</text>
+
+  <rect x="60" y="992" width="14" height="14" fill="#fff" stroke="#cbd5e1"/>
+  <text x="82" y="1004" class="box-note">■ 原有模块（v1.x / v3.0，保持不变）</text>
+
+  <rect x="60" y="1014" width="14" height="14" fill="#fef2f2" stroke="#dc2626" stroke-dasharray="3,2"/>
+  <text x="82" y="1026" class="box-note">■ 本次新增 / 改动（v3.1）</text>
+
+  <text x="360" y="1000" font-size="12" font-weight="600" fill="#dc2626">三处改动：</text>
+  <text x="360" y="1018" class="box-note">① 语义检索层 — 新增 embed.py（bge-small-zh）+ rag.py 双路并行召回</text>
+  <text x="360" y="1036" class="box-note">② 转人工硬规则 — reply_gen.py 新增 should_escalate（承诺/纠纷/超纲三类关键词）</text>
+  <text x="360" y="1054" class="box-note">③ embedding 缓存 — embed.py 加 KB 指纹缓存，砍掉 59s 耗时大头</text>
+
+  <text x="660" y="1000" font-size="12" font-weight="600" fill="#16a34a">效果（实测）：</text>
+  <text x="660" y="1018" class="box-note">"赠品/几久/褪色"等语义近邻可召回，不再字面撞墙</text>
+  <text x="660" y="1036" class="box-note">"开发票/投诉"0.7s 直接转人工，不硬答（防乱回复）</text>
+  <text x="660" y="1054" class="box-note">重复问"发货要多久" 59s → 10.5s（缓存命中）</text>
+</svg>

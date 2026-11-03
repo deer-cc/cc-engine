@@ -10,9 +10,10 @@ from datetime import datetime
 # P3: 顶层导入（消除函数内import代码异味）
 from src.intent import classify_intent
 from src.dialog import DialogManager
-from src.rag import search_kb
+from src.rag import search_kb, search_kb_trace
 from src.confidence import get_confidence_level
 from src.request_log import RequestLog
+from src.reply_gen import ReplyGenerator
 
 # ─── 路径配置 ───────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent.parent
@@ -57,12 +58,14 @@ class IntentResponse(BaseModel):
 class KBSearchRequest(BaseModel):
     query: str
     top_k: int = 3
+    debug: bool = False
 
 
 class KBSearchResponse(BaseModel):
     results: List[dict]
     query: str
     count: int
+    trace: Optional[dict] = None
 
 
 # ─── 初始化 ────────────────────────────────────────────────
@@ -157,17 +160,23 @@ async def chat(req: ChatRequest):
     # 意图识别（P0修复：补await，LLM意图识别才能真正执行）
     intent_result = await classify_intent(req.message, config)
     log.intent = intent_result.get("intent")
-
-    # v1.1: 置信度校准
     confidence_level = get_confidence_level(
         intent_result["confidence"],
         intent_result["intent"]
     )
 
     # 知识库检索
+    # v3.1：所有非招呼/告别意图都检索（含 unknown）——语义层需要 query 文本，
+    # 意图判不准时检索仍能召回，交 LLM 决定"能不能答"
+    # 上下文指代消解：买家分段发"这个/几久/洗了褪色"时，结合 history 补全成完整问句再检索
     kb_results = []
-    if intent_result["intent"] != "unknown":
-        kb_results = await search_kb(req.message, k=config.get("kb_top_k", 3))
+    if intent_result["intent"] not in ("greeting", "bye"):
+        search_query = req.message
+        gen = ReplyGenerator(session, config)
+        search_query = await gen.resolve_reference(req.message, session.get("history", []))
+        kb_results = await search_kb(search_query, k=config.get("kb_top_k", 3))
+        # 检索用消解后的 query，但回复仍基于买家原话 + 召回结果
+        log.query = f"{req.message} → {search_query}" if search_query != req.message else req.message
     log.kb_hits = len(kb_results)
 
     # 对话管理 + 回复生成（降级信息回传给日志）
@@ -210,7 +219,11 @@ async def get_intent(req: IntentRequest):
 
 @app.post("/kb/search", response_model=KBSearchResponse)
 async def kb_search(req: KBSearchRequest):
-    """知识库检索"""
+    """知识库检索（debug=true 返回链路追踪：改写词/候选数/耗时）"""
+    if req.debug:
+        results, trace = await search_kb_trace(req.query, k=req.top_k)
+        return KBSearchResponse(results=results, query=req.query,
+                                count=len(results), trace=trace)
     results = await search_kb(req.query, k=req.top_k)
     return KBSearchResponse(results=results, query=req.query, count=len(results))
 

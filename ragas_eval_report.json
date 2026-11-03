@@ -172,28 +172,28 @@
       "query": "怎么退货",
       "predicted": "returns",
       "expected": "returns",
-      "confidence": 0.93,
+      "confidence": 0.98,
       "correct": true
     },
     {
       "query": "退货后多久退款",
       "predicted": "returns",
       "expected": "returns",
-      "confidence": 0.96,
+      "confidence": 0.97,
       "correct": true
     },
     {
       "query": "七天无理由退货支持吗",
       "predicted": "returns",
       "expected": "returns",
-      "confidence": 0.97,
+      "confidence": 0.98,
       "correct": true
     },
     {
       "query": "换货怎么操作",
       "predicted": "returns",
       "expected": "returns",
-      "confidence": 0.97,
+      "confidence": 0.98,
       "correct": true
     },
     {
@@ -207,7 +207,7 @@
       "query": "退货运费谁出",
       "predicted": "returns",
       "expected": "returns",
-      "confidence": 0.93,
+      "confidence": 0.95,
       "correct": true
     },
     {
@@ -221,35 +221,35 @@
       "query": "江浙沪几天到",
       "predicted": "shipping",
       "expected": "shipping",
-      "confidence": 0.96,
+      "confidence": 0.98,
       "correct": true
     },
     {
       "query": "运费怎么算",
       "predicted": "shipping",
       "expected": "shipping",
-      "confidence": 0.97,
+      "confidence": 0.93,
       "correct": true
     },
     {
       "query": "满多少包邮",
       "predicted": "shipping",
       "expected": "shipping",
-      "confidence": 0.98,
+      "confidence": 0.95,
       "correct": true
     },
     {
       "query": "有优惠券吗",
       "predicted": "price",
       "expected": "price",
-      "confidence": 0.98,
+      "confidence": 0.97,
       "correct": true
     },
     {
       "query": "优惠券怎么用",
       "predicted": "price",
       "expected": "price",
-      "confidence": 0.9,
+      "confidence": 0.92,
       "correct": true
     },
     {
@@ -263,7 +263,7 @@
       "query": "商品尺码偏大还是偏小",
       "predicted": "product",
       "expected": "product",
-      "confidence": 0.95,
+      "confidence": 0.97,
       "correct": true
     },
     {

@@ -13,6 +13,7 @@ from typing import List, Dict, Any
 from datetime import datetime
 
 from src.query_rewriter import rewrite_query, extract_keywords_improved
+from src import embed
 
 
 # P2优化：检索结果缓存，相同query在TTL内直接返回
@@ -137,6 +138,16 @@ class KnowledgeBase:
 
     def search(self, query: str, top_k: int = 3) -> List[Dict]:
         """混合检索：查询改写 + 关键词匹配 + TF-IDF 向量相似度（v1.1）"""
+        results, _ = self.search_with_trace(query, top_k=top_k)
+        return results
+
+    def search_with_trace(self, query: str, top_k: int = 3) -> tuple:
+        """与 search 结果完全一致，额外返回链路追踪（改写词/候选数/耗时）。
+
+        追踪只做观测，不参与打分，不改变任何检索结果与指标。
+        """
+        started = time.perf_counter()
+
         # Step 1: 查询改写（口语化 → 标准术语）
         rewritten_query = rewrite_query(query)
 
@@ -149,7 +160,14 @@ class KnowledgeBase:
             candidate_ids.update(self.inverted_index.get(kw, []))
 
         if not candidate_ids:
-            return []
+            return [], {
+                "rewritten_query": rewritten_query,
+                "query_keywords": query_keywords,
+                "candidate_count": 0,
+                "scored_count": 0,
+                "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+                "top": [],
+            }
 
         # 计算每个 chunk 的得分
         scores = {}
@@ -163,22 +181,55 @@ class KnowledgeBase:
             # 融合评分
             scores[cid] = kw_score * 0.5 + vec_score * 0.5
 
-        # 排序取 top_k
-        sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[:top_k]
+        # 排序取 top_k（先不截断，等语义路合并后再统一取）
+        sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
 
-        results = []
+        keyword_results = []
         for cid in sorted_ids:
             chunk = self.chunks[cid]
-            results.append({
+            keyword_results.append({
                 "id": cid,
                 "content": chunk["content"],
                 "source": chunk["source"],
                 "title": chunk["title"],
                 "score": round(scores[cid], 4),
-                "keywords": chunk.get("keywords", [])
+                "keywords": chunk.get("keywords", []),
+                "match_type": "keyword",
             })
 
-        return results
+        # ── 语义并行召回（v3.1）：字面 / 语义 各占一栏，去重合并 ──
+        # 旧版 bug：字面先填满 top_k，语义补位恒为 0，语义层形同虚设。
+        # 改为：字面取前一半、语义取前一半（去重），合并后截断到 top_k。
+        # 字面强命中永远有位置，语义专攻字面漏掉的盲区，各占一栏。
+        half = (top_k + 1) // 2
+        kw_top = keyword_results[:half]
+        kw_ids = {r["id"] for r in kw_top}
+        sem_top = []
+        for r in embed.semantic_search(query, self.chunks, top_k=top_k * 2):
+            if r["id"] in kw_ids:
+                continue
+            r["match_type"] = "semantic"
+            sem_top.append(r)
+            kw_ids.add(r["id"])
+            if len(sem_top) >= half:
+                break
+
+        results = kw_top + sem_top
+
+        trace = {
+            "rewritten_query": rewritten_query,
+            "query_keywords": query_keywords,
+            "candidate_count": len(candidate_ids),
+            "scored_count": len(scores),
+            "semantic_added": len([r for r in results if r.get("match_type") == "semantic"]),
+            "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+            "top": [
+                {"id": r["id"], "score": r["score"], "title": r["title"], "source": r["source"],
+                 "match_type": r.get("match_type", "keyword")}
+                for r in results
+            ],
+        }
+        return results, trace
 
 
 # 全局知识库实例
@@ -198,9 +249,9 @@ async def search_kb(query: str, k: int = 3) -> List[Dict]:
     """异步搜索知识库（带TTL缓存+过期清理）"""
     # P3: 清理过期条目（防止内存泄漏）
     now = time.time()
-    expired_keys = [k for k, (v, t) in _kb_cache.items() if now - t >= KB_CACHE_TTL]
-    for k in expired_keys:
-        del _kb_cache[k]
+    expired_keys = [key for key, (v, t) in _kb_cache.items() if now - t >= KB_CACHE_TTL]
+    for key in expired_keys:
+        del _kb_cache[key]
 
     # P2: 检查缓存
     cache_key = f"{query}:{k}"
@@ -217,6 +268,12 @@ async def search_kb(query: str, k: int = 3) -> List[Dict]:
     return results
 
 
+async def search_kb_trace(query: str, k: int = 3) -> tuple:
+    """调试用：返回检索结果 + 链路追踪（跳过缓存，保证耗时真实）"""
+    kb = get_kb()
+    return kb.search_with_trace(query, top_k=k)
+
+
 async def refresh_kb(knowledge_dir: Path = None):
     """重新加载知识库并清空缓存"""
     global _kb_instance
@@ -224,4 +281,6 @@ async def refresh_kb(knowledge_dir: Path = None):
     _kb_instance = KnowledgeBase(kb_dir)
     # P2: 清空检索缓存
     _kb_cache.clear()
+    # v3.1: 清空语义 embedding 缓存（KB 变了，旧向量作废）
+    embed.refresh_cache()
     return {"status": "ok", "chunks": len(_kb_instance.chunks)}

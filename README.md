@@ -8,6 +8,10 @@ A customer service agent showcasing AI dialogue engineering capabilities: intent
 
 > Metrics are measured on a 15-query labeled set (`tests/eval_set.json`) whose expected answers were derived from the same keyword rules the engine uses — an **in-sample** figure. A held-out set with colloquial queries not in the keyword table would show a lower number (see RETRIEVAL_TUNING.md §5).
 
+**Ops**: Windows 一键启动 `start_demo.bat`（自动清理占用 8899 的旧进程后拉起服务，实测杀进程后重新运行数秒内恢复）；无人值守场景可用任务计划程序做崩溃自启，步骤见 [DEPLOY-Windows.md](DEPLOY-Windows.md) §4。
+
+**Hallucination guard**: for knowledge-seeking intents, if retrieval returns nothing the engine answers "知识库里暂时没有对应的资料" instead of calling the LLM or falling back to a canned policy reply — so it never invents a shipping window or discount. See `src/dialog.py::_generate_reply`.
+
 ```bash
 pip install -r requirements.txt && pytest tests/ -q   # test
 python -m uvicorn src.main:app --port 8899            # run → http://127.0.0.1:8899
@@ -22,6 +26,8 @@ Docs: [DELIVERY.md](DELIVERY.md) · [DESIGN.md](DESIGN.md) · [RETRIEVAL_TUNING.
 ![Demo](docs/screenshots/demo.gif)
 
 The built-in page at `/` — type a question or click a sample, get **intent + confidence + KB-grounded reply** in a multi-turn session.
+
+The **「有赠品吗（知识库没有）」** chip demonstrates the hallucination guard: when the knowledge base has no matching chunk, the engine says so instead of inventing an answer.
 
 Auto-generated API docs at `/docs` (FastAPI/OpenAPI):
 
